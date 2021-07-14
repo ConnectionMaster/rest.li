@@ -47,13 +47,10 @@ public class GenerateDataTemplateTask extends DefaultTask
   private FileCollection _codegenClasspath;
   private boolean _enableArgFile;
   private Boolean _generateLowercasePath;
+  private boolean _generateFieldMask;
 
   // Output Task Property
   private File _destinationDir;
-
-  public GenerateDataTemplateTask()
-  {
-  }
 
   /**
    * Directory containing the data schema files.
@@ -126,9 +123,42 @@ public class GenerateDataTemplateTask extends DefaultTask
     _enableArgFile = enable;
   }
 
+  /**
+   * @deprecated by {@link #isGenerateFieldMask()} because Gradle 7 requires
+   *     input and output properties to be annotated on getters, which have a
+   *     prefix of "is" or "get".
+   */
+  @Deprecated
+  public boolean generateFieldMask()
+  {
+    return isGenerateFieldMask();
+  }
+
+  @Input
+  public boolean isGenerateFieldMask()
+  {
+    return _generateFieldMask;
+  }
+
+  public void setGenerateFieldMask(boolean generateFieldMask)
+  {
+    _generateFieldMask = generateFieldMask;
+  }
+
+  /**
+   * @deprecated by {@link #isGenerateLowercasePath()} ()} because Gradle 7
+   *     requires input and output properties to be annotated on getters, which
+   *     have a prefix of "is" or "get".
+   */
+  @Deprecated
+  public Boolean generateLowercasePath()
+  {
+    return isGenerateLowercasePath();
+  }
+
   @Optional
   @Input
-  public Boolean generateLowercasePath()
+  public Boolean isGenerateLowercasePath()
   {
     return _generateLowercasePath;
   }
@@ -187,6 +217,10 @@ public class GenerateDataTemplateTask extends DefaultTask
       if (_generateLowercasePath != null)
       {
         javaExecSpec.jvmArgs("-Dgenerator.generate.lowercase.path=" + _generateLowercasePath); //.run(generateLowercasePath)
+      }
+      if (_generateFieldMask)
+      {
+        javaExecSpec.jvmArgs("-Dgenerator.generate.field.mask=true");
       }
       javaExecSpec.jvmArgs("-Droot.path=" + getProject().getRootDir().getPath());
       javaExecSpec.args(_destinationDir.getPath());

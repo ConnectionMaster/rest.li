@@ -1,4 +1,0 @@
-package $spec.namespace;
-
-public class $className {
-}

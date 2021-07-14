@@ -21,19 +21,23 @@ import com.linkedin.data.schema.resolver.MultiFormatDataSchemaResolver;
 import com.linkedin.internal.tools.ArgumentFileProcessor;
 import com.linkedin.pegasus.generator.CodeUtil;
 import com.linkedin.pegasus.generator.TemplateSpecGenerator;
-import com.linkedin.restli.common.ResourceMethod;
-import com.linkedin.restli.internal.common.RestliVersion;
 import com.linkedin.restli.internal.server.RestLiInternalException;
 import com.linkedin.restli.restspec.ResourceEntityType;
 import com.linkedin.restli.restspec.ResourceSchema;
-import com.linkedin.restli.tools.clientgen.builderspec.BuilderSpec;
+import com.linkedin.restli.tools.clientgen.fluentspec.ActionSetResourceSpec;
+import com.linkedin.restli.tools.clientgen.fluentspec.AssociationResourceSpec;
+import com.linkedin.restli.tools.clientgen.fluentspec.BaseResourceSpec;
+import com.linkedin.restli.tools.clientgen.fluentspec.CollectionResourceSpec;
+import com.linkedin.restli.tools.clientgen.fluentspec.SimpleResourceSpec;
+import com.linkedin.restli.tools.clientgen.fluentspec.SpecUtils;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -41,13 +45,17 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
-import org.apache.velocity.runtime.log.Log4JLogChute;
 import org.apache.velocity.runtime.resource.loader.JarResourceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.restli.tools.clientgen.RequestBuilderSpecGenerator.*;
+import static com.linkedin.restli.tools.clientgen.fluentspec.SpecUtils.*;
 
 
 /**
@@ -59,22 +67,8 @@ public class FluentApiGenerator
 {
   private static final Logger LOGGER = LoggerFactory.getLogger(FluentApiGenerator.class);
   private static final Options OPTIONS = new Options();
-  private static final Map<ResourceMethod, String> BUILDER_BASE_MAP = new HashMap<>();
   private static final String API_TEMPLATE_DIR = "apiVmTemplates";
-
-  static {
-    BUILDER_BASE_MAP.put(ResourceMethod.GET, "get");
-    BUILDER_BASE_MAP.put(ResourceMethod.DELETE, "delete");
-    BUILDER_BASE_MAP.put(ResourceMethod.UPDATE, "update");
-    BUILDER_BASE_MAP.put(ResourceMethod.CREATE, "create");
-    BUILDER_BASE_MAP.put(ResourceMethod.PARTIAL_UPDATE, "partialUpdate");
-    BUILDER_BASE_MAP.put(ResourceMethod.GET_ALL, "getAll");
-    BUILDER_BASE_MAP.put(ResourceMethod.BATCH_GET, "batchGet");
-    BUILDER_BASE_MAP.put(ResourceMethod.BATCH_UPDATE, "batchUpdate");
-    BUILDER_BASE_MAP.put(ResourceMethod.BATCH_PARTIAL_UPDATE, "batchPartialUpdate");
-    BUILDER_BASE_MAP.put(ResourceMethod.BATCH_DELETE, "batchDelete");
-    BUILDER_BASE_MAP.put(ResourceMethod.BATCH_CREATE, "batchCreate");
-  }
+  private static final String FLUENT_CLIENT_FILE_SUFFIX = "FluentClient";
 
   public static void main(String[] args) throws Exception
   {
@@ -124,45 +118,169 @@ public class FluentApiGenerator
 
       FluentApiGenerator.run(resolverPath, cl.getOptionValue('r'), targetDirectory, sources);
     }
-    catch (ParseException e)
+    catch (ParseException | IOException e)
     {
-      LOGGER.error("Invalid arguments: " + e.getMessage());
+      LOGGER.error("Encountered error while generating Fluent clients: " + e.getMessage());
       help();
       System.exit(1);
     }
+  }
 
+  /**
+   * Generate a fluentClient based on a resource schema
+   *
+   * @param resourceSchema the resource schema used to generate fluent client
+   * @param schemaResolver a schema resolver used to resolve schema
+   * @param velocityEngine template generating engine
+   * @param targetDirectory the directory where the fluent client will be generated
+   * @param sourceIdlName the source Idl file path that this resource schema is associated with
+   *                      Note the subResource will be in the same IDL with its parent
+   * @param message string builder to build error message
+   * @throws IOException
+   */
+  static BaseResourceSpec generateFluentClientByResource(ResourceSchema resourceSchema,
+                                             DataSchemaResolver schemaResolver,
+                                             VelocityEngine velocityEngine,
+                                             File targetDirectory,
+                                             String sourceIdlName,
+                                             List<BaseResourceSpec> parentList,
+                                             StringBuilder message)
+  {
+      // Skip unstructured data resources for client generation
+      if (resourceSchema != null && ResourceEntityType.UNSTRUCTURED_DATA == resourceSchema.getEntityType())
+      {
+        return null;
+      }
+
+      BaseResourceSpec spec = null;
+      if (resourceSchema.hasCollection())
+      {
+        spec = new CollectionResourceSpec(resourceSchema,
+            new TemplateSpecGenerator(schemaResolver),
+            sourceIdlName,
+            schemaResolver, resourceSchema.getCollection().getIdentifier().getParams());
+      }
+      else if (resourceSchema.hasSimple())
+      {
+        spec = new SimpleResourceSpec(resourceSchema,
+            new TemplateSpecGenerator(schemaResolver),
+            sourceIdlName,
+            schemaResolver);
+      }
+      else if (resourceSchema.hasAssociation())
+      {
+        spec = new AssociationResourceSpec(resourceSchema,
+            new TemplateSpecGenerator(schemaResolver),
+            sourceIdlName,
+            schemaResolver);
+      }
+      else if (resourceSchema.hasActionsSet())
+      {
+        spec = new ActionSetResourceSpec(resourceSchema,
+            new TemplateSpecGenerator(schemaResolver),
+            sourceIdlName,
+            schemaResolver);
+      }
+      else
+      {
+        throw new RuntimeException("Encountered schema with unknown type:" + resourceSchema.getName());
+      }
+      File packageDir = new File(targetDirectory, spec.getNamespace().toLowerCase().replace('.', File.separatorChar));
+      packageDir.mkdirs();
+      // Generate FluentClient impl
+      File implFile = new File(packageDir, CodeUtil.capitalize(spec.getResource().getName()) + FLUENT_CLIENT_FILE_SUFFIX + ".java");
+      // Generate Resource interface
+      File interfaceFile= new File(packageDir, CodeUtil.capitalize(spec.getResource().getName()) + ".java");
+
+      String resourcePath = getResourcePath(resourceSchema.getPath());
+      List<String> pathKeys = getPathKeys(resourcePath);
+      spec.setPathKeys(pathKeys);
+      spec.setAncestorResourceSpecs(new ArrayList<>(parentList));
+      List<BaseResourceSpec> childrenList = new LinkedList<>();
+      if (spec.getSubResources() != null)
+      {
+        parentList.add(spec);
+        for (ResourceSchema sub : spec.getSubResources())
+        {
+          BaseResourceSpec childSpec = generateFluentClientByResource(sub,
+              schemaResolver,
+              velocityEngine,
+              targetDirectory,
+              sourceIdlName,
+              parentList,
+              message);
+          if (childSpec != null)
+          {
+            childrenList.add(childSpec);
+          }
+        }
+        parentList.remove(parentList.size() - 1);
+      }
+
+      spec.setChildSubResourceSpecs(childrenList);
+
+    for (Pair<File, String> templatePair : Arrays.asList(
+          ImmutablePair.of(interfaceFile, "resource_interface.vm"),
+          ImmutablePair.of(implFile, "resource.vm")
+      ))
+      {
+
+        if (
+            // If this is subresource, its interface should be nested in its root parent's interface
+            templatePair.getLeft() == interfaceFile
+            && parentList.size() != 0
+            // Unless this subresource is in different namespace with its immediate parent
+            // In this case, two interfaces will be generated in different namespaces,
+            //    In this way, FluentClient impl always stays together with the interface
+            && parentList.get(parentList.size() - 1).getNamespace().equals(spec.getNamespace())
+            )
+
+        {
+          continue;
+        }
+
+        try (FileWriter writer = new FileWriter(templatePair.getLeft()))
+        {
+          VelocityContext context = new VelocityContext();
+          context.put("spec", spec);
+          context.put("util", SpecUtils.class);
+          context.put("class_name_suffix", FLUENT_CLIENT_FILE_SUFFIX);
+          velocityEngine.mergeTemplate(API_TEMPLATE_DIR + "/" + templatePair.getRight(),
+              VelocityEngine.ENCODING_DEFAULT,
+              context,
+              writer);
+        }
+        catch (Exception e)
+        {
+          LOGGER.error("Error generating fluent client apis", e);
+          message.append(e.getMessage()).append("\n");
+        }
+    }
+    return spec;
   }
 
   static void run(String resolverPath, String rootPath, String targetDirectoryPath, String[] sources)
       throws IOException
   {
-    final RestSpecParser parser = new RestSpecParser();
     final DataSchemaResolver schemaResolver = MultiFormatDataSchemaResolver.withBuiltinFormats(resolverPath);
-
-
-    final RequestBuilderSpecGenerator specGenerator = new RequestBuilderSpecGenerator(schemaResolver,
-        new TemplateSpecGenerator(schemaResolver), RestliVersion.RESTLI_2_0_0, BUILDER_BASE_MAP);
-
-    final RestSpecParser.ParseResult parseResult = parser.parseSources(sources);
-
+    VelocityEngine velocityEngine = initVelocityEngine();
+    final File targetDirectory = new File(targetDirectoryPath);
     final StringBuilder message = new StringBuilder();
+
+    final RestSpecParser parser = new RestSpecParser();
+    final RestSpecParser.ParseResult parseResult = parser.parseSources(sources);
     for (CodeUtil.Pair<ResourceSchema, File> pair : parseResult.getSchemaAndFiles())
     {
-      ResourceSchema resourceSchema = pair.first;
-      // Skip unstructured data resources for client generation
-      if (resourceSchema != null && ResourceEntityType.UNSTRUCTURED_DATA == resourceSchema.getEntityType())
-      {
-        continue;
-      }
 
-      try
-      {
-        specGenerator.generate(resourceSchema, pair.second);
-      }
-      catch (Exception e)
-      {
-        message.append(e.getMessage()).append("\n");
-      }
+      generateFluentClientByResource(
+        pair.first,
+        schemaResolver,
+        velocityEngine,
+        targetDirectory,
+        pair.second.getPath(),
+        new ArrayList<>(2),
+        message
+      );
     }
 
     if (message.length() > 0)
@@ -170,31 +288,6 @@ public class FluentApiGenerator
       throw new IOException(message.toString());
     }
 
-    Set<BuilderSpec> allBuilders = specGenerator.getBuilderSpec();
-    VelocityEngine velocityEngine = initVelocityEngine();
-    final File targetDirectory = new File(targetDirectoryPath);
-    for (BuilderSpec spec : allBuilders)
-    {
-      File packageDir = new File(targetDirectory, spec.getNamespace().toLowerCase().replace('.', File.separatorChar));
-      packageDir.mkdirs();
-      File file = new File(packageDir, CodeUtil.capitalize(spec.getResource().getName()) + ".java");
-      try (FileWriter writer = new FileWriter(file))
-      {
-        VelocityContext context = new VelocityContext();
-        context.put("spec", spec);
-        context.put("className", CodeUtil.capitalize(spec.getResource().getName()));
-        if (spec.getResource().hasCollection())
-        {
-          // TODO: Implement.
-          velocityEngine.mergeTemplate(API_TEMPLATE_DIR + "/collection.vm", context, writer);
-        }
-      }
-      catch (Exception e)
-      {
-        LOGGER.error("Error generating fluent client apis", e);
-        System.exit(1);
-      }
-    }
   }
 
   private static VelocityEngine initVelocityEngine()
@@ -230,17 +323,14 @@ public class FluentApiGenerator
       velocity = new VelocityEngine();
 
       final String resourceDirPath = new File(templateDirUrl.getPath()).getParent();
-      configName = new StringBuilder("file.").append(VelocityEngine.RESOURCE_LOADER).append(".path");
-      velocity.setProperty(configName.toString(), resourceDirPath);
+      velocity.setProperty(RuntimeConstants.FILE_RESOURCE_LOADER_PATH, resourceDirPath);
     }
     else
     {
       throw new IllegalArgumentException("Unsupported template path scheme");
     }
-
-    velocity.setProperty(RuntimeConstants.RUNTIME_LOG_LOGSYSTEM_CLASS, Log4JLogChute.class.getName());
-    velocity.setProperty(Log4JLogChute.RUNTIME_LOG_LOG4J_LOGGER, FluentApiGenerator.class.getName());
-
+    velocity.setProperty(RuntimeConstants.SPACE_GOBBLING, RuntimeConstants.SpaceGobbling.STRUCTURED.name());
+    velocity.setProperty(RuntimeConstants.VM_LIBRARY, "macros/library.vm");
     try
     {
       velocity.init();

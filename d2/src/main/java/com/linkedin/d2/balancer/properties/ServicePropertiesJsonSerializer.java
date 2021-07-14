@@ -17,6 +17,8 @@
 package com.linkedin.d2.balancer.properties;
 
 
+import com.linkedin.d2.balancer.properties.util.PropertyUtil;
+import com.linkedin.d2.balancer.subsetting.SubsettingStrategy;
 import com.linkedin.d2.balancer.util.JacksonUtil;
 import com.linkedin.d2.discovery.PropertyBuilder;
 import com.linkedin.d2.discovery.PropertySerializationException;
@@ -202,12 +204,16 @@ public class ServicePropertiesJsonSerializer implements
     Map<String, Object> transportClientProperties = mapGetOrDefault(map, PropertyKeys.TRANSPORT_CLIENT_PROPERTIES, Collections.emptyMap());
     Map<String, String> degraderProperties = mapGetOrDefault(map, PropertyKeys.DEGRADER_PROPERTIES, Collections.emptyMap());
     Map<String, Object> relativeStrategyProperties = mapGetOrDefault(map, PropertyKeys.RELATIVE_STRATEGY_PROPERTIES, Collections.emptyMap());
+    boolean enableClusterSubsetting = map.containsKey(PropertyKeys.ENABLE_CLUSTER_SUBSETTING) ? PropertyUtil.coerce(
+        map.get(PropertyKeys.ENABLE_CLUSTER_SUBSETTING), Boolean.class) : SubsettingStrategy.DEFAULT_ENABLE_CLUSTER_SUBSETTING;
+    int minClusterSubsetSize = map.containsKey(PropertyKeys.MIN_CLUSTER_SUBSET_SIZE) ? PropertyUtil.coerce(
+        map.get(PropertyKeys.MIN_CLUSTER_SUBSET_SIZE), Integer.class) : SubsettingStrategy.DEFAULT_CLUSTER_SUBSET_SIZE;
 
     List<URI> bannedList = mapGetOrDefault(map, PropertyKeys.BANNED_URIS, Collections.emptyList());
     Set<URI> banned = new HashSet<>(bannedList);
     List<String> prioritizedSchemes = mapGetOrDefault(map, PropertyKeys.PRIORITIZED_SCHEMES, Collections.emptyList());
 
-    Map<String, Object> metadataProperties = new HashMap<String,Object>();
+    Map<String, Object> metadataProperties = new HashMap<>();
     String isDefaultService = mapGetOrDefault(map, PropertyKeys.IS_DEFAULT_SERVICE, null);
     if ("true".equalsIgnoreCase(isDefaultService))
     {
@@ -238,6 +244,8 @@ public class ServicePropertiesJsonSerializer implements
                                  banned,
                                  metadataProperties,
                                  backupRequests,
-                                 relativeStrategyProperties);
+                                 relativeStrategyProperties,
+                                 enableClusterSubsetting,
+                                 minClusterSubsetSize);
   }
 }

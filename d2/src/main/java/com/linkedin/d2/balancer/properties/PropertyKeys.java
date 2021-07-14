@@ -72,6 +72,8 @@ public class PropertyKeys
   public static final String ALLOWED_CLIENT_OVERRIDE_KEYS = "allowedClientOverrideKeys";
   public static final String SERVICE_METADATA_PROPERTIES = "serviceMetadataProperties";
   public static final String RELATIVE_STRATEGY_PROPERTIES = "relativeStrategyProperties";
+  public static final String ENABLE_CLUSTER_SUBSETTING = "enableClusterSubsetting";
+  public static final String MIN_CLUSTER_SUBSET_SIZE = "minClusterSubsetSize";
 
   //load balancer specific properties
   public static final String LB_STRATEGY_LIST = "loadBalancerStrategyList";
@@ -215,7 +217,8 @@ public class PropertyKeys
   // used by dark clusters
   public static final String DARK_CLUSTER_MULTIPLIER = "multiplier";
   public static final String DARK_CLUSTER_OUTBOUND_TARGET_RATE = "dispatcherOutboundTargetRate";
-  public static final String DARK_CLUSTER_OUTBOUND_MAX_RATE = "dispatcherOutboundMaxRate";
+  public static final String DARK_CLUSTER_MAX_REQUESTS_TO_BUFFER = "dispatcherMaxRequestsToBuffer";
+  public static final String DARK_CLUSTER_BUFFERED_REQUEST_EXPIRY_IN_SECONDS = "dispatcherBufferedRequestExpiryInSeconds";
   public static final String DARK_CLUSTER_STRATEGY_LIST = "darkClusterStrategyList";
   public static final String DARK_CLUSTER_TRANSPORT_CLIENT_PROPERTIES = "transportClientProperties";
 

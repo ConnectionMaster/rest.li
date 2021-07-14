@@ -46,6 +46,13 @@ public interface TrackerClient extends LoadBalancerClient
   TransportClient getTransportClient();
 
   /**
+   * @param doNotSlowStart Should the host skip performing slow start
+   */
+  default void setDoNotSlowStart(boolean doNotSlowStart)
+  {
+  }
+
+  /**
    * @return Should the host skip performing slow start
    */
   boolean doNotSlowStart();
@@ -59,6 +66,19 @@ public interface TrackerClient extends LoadBalancerClient
   {
     PartitionData partitionData = getPartitionDataMap().get(partitionId);
     return partitionData == null ? null : partitionData.getWeight();
+  }
+
+  /**
+   * @param partitionId Partition ID key.
+   * @param subsetWeight Weight of the tracker client in the subset
+   */
+  default void setSubsetWeight(int partitionId, double subsetWeight)
+  {
+  }
+
+  default double getSubsetWeight(int partitionId)
+  {
+    return 1D;
   }
 
   /**

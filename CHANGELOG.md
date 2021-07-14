@@ -13,6 +13,190 @@ When updating the changelog, remember to be very clear about what behavior has c
 and what APIs have changed, if applicable.
 
 ## [Unreleased]
+- Update RestliRouter to allow "bq", "action" as query parameter name for finder, "q" as action parameter name for action
+
+## [29.19.8] - 2021-07-02
+- Define new Dark Cluster configs in d2 PropertyKeys
+
+## [29.19.7] - 2021-06-30
+- Fix equals() and hashCode() in ServiceProperties to support cluster subsetting
+
+## [29.19.6] - 2021-06-28
+- Fix validation logic for non-numeric float values (i.e. `NaN`, `Infinity`, `-Infinity`).
+  - This affects the underlying implementation for the coercion modes defined by `CoercionMode`
+    (the Javadoc for each mode has been updated accordingly).
+
+## [29.19.5] - 2021-06-24
+- Fix request builder generator to skip unstructured data sub resources correctly.
+- Use the Java 7 diamond operator everywhere.
+
+## [29.19.4] - 2021-06-23
+- Do not apply Idea and Eclipse plugins.
+
+## [29.19.3] - 2021-06-18
+- More changes for Gradle 7 compatibility.
+  - Add schemas as source set resources and rely on the Java plugin to copy them
+    into the artifact instead of doing so directly, to avoid copying duplicates.
+  - Change getter names in `GenerateDataTemplateTask` to conform to what Gradle 7
+    requires and deprecate the old ones.
+
+## [29.19.2] - 2021-06-17
+- Allow client-side `RetriableRequestException` to be retried after `ClientRetryFilter`.
+
+## [29.19.1] - 2021-06-09
+- Add support for `CONSTANT_QPS` dark canary cluster strategy.
+
+## [29.18.15] - 2021-06-02
+- Fix race conditions in D2 cluster subsetting. Refactor subsetting cache to `SubsettingState`.
+
+## [29.18.14] - 2021-05-27
+- Use `class.getClassLoader()` instead of `thread.getContextClassLoader()` to get the class loader.
+
+## [29.18.13] - 2021-05-27
+- Remove one more `"runtime"` configuration reference.
+
+## [29.18.12] - 2021-05-26
+- Use daemon threads to unregister `TimingKey` instances.
+
+## [29.18.11] - 2021-05-24
+- Add support for returning location of schema elements from the PDL schema parser.
+
+## [29.18.10] - 2021-05-24
+- Introduce a readonly attribute on the `@Action` annotation.
+
+## [29.18.9] - 2021-05-24
+- Initial support for the modern `ivy-publish` plugin when producing data-template artifacts
+  - Use of `ivy-publish` plugin requires Gradle 6.1+.
+  - When `pegasus` and `ivy-publish` plugins are applied in concert,
+    a new [Publication](https://docs.gradle.org/5.2.1/javadoc/org/gradle/api/publish/Publication.html) called `ivy` is created.
+  - This Publication name can be modified by setting the `PegasusPublicationName` project property.
+  - See [Ivy Publish Plugin](https://docs.gradle.org/5.2.1/userguide/publishing_ivy.html) for more information about the modern publishing mechanism.
+
+## [29.18.8] - 2021-05-21
+- Fix a bug in `ZKDeterministicSubsettingMetadataProvider` to make host set distinct.
+
+## [29.18.7] - 2021-05-16
+- Copy the input pegasus data schema when translating to avro.
+
+## [29.18.6] - 2021-05-13
+- Expose `getResourceClass` from `ResourceDefinition` interface.
+
+## [29.18.5] - 2021-05-13
+- Add `"http.streamingTimeout"` to `AllowedClientPropertyKeys`.
+
+## [29.18.4] - 2021-05-06
+- Replace `runtime` configuration with `runtimeClasspath` configuration in plugin for compatibility with Gradle 7.
+
+## [29.18.3] - 2021-05-03
+- Strictly enforce Gradle version compatibility in the `pegasus` Gradle plugin.
+  - Minimum required Gradle version is now `1.0` (effectively backward-compatible).
+  - Minimum suggested Gradle version is now `5.2.1`
+- Fix TimingKey Memory Leak
+- Fix bottlenecks in DataSchemaParser
+
+## [29.18.2] - 2021-04-28
+- Fix bug in generated fluent client APIs when typerefs are used as association key params
+- Add debug log for cluster subsetting updates
+
+## [29.18.1] - 2021-04-22
+- Add fluent client API for `FINDER` and `BATCH_FINDER` methods.
+- Fix a bug when converting `enableClusterSubsetting` config to Boolean in `ServicePropertiesJsonSerializer`.
+
+## [29.18.0] - 2021-04-20
+- Use host FQDN instead of nodeUri to get D2 subsetting metadata
+
+## [29.17.4] - 2021-04-16
+- Migrate the Rest.li release process from Bintray to JFrog Artifactory.
+  - As of this version, Bintray will no longer host Rest.li releases.
+  - Releases can be found on [LinkedIn's JFrog Artifactory instance](https://linkedin.jfrog.io/).
+
+## [29.17.3] - 2021-04-15
+- Releasing to test new CI behavior.
+
+## [29.17.2] - 2021-04-11
+- Fix the default value resolution logic in Avro schema translator to match the PDL behavior.
+
+## [29.17.1] - 2021-04-02
+- Add fluent client api for subresources
+- Update fluent client APIs to include projection mask as input parameter.
+- Update projection mask builder APIs to support updating the mask objects.
+- Added support for checking if a nested type supports new ProjectionMask API before generating new typesafe APIs for them.
+- Fix a typo in D2ClientConfig
+
+## [29.17.0] - 2021-03-23
+- Implement D2 cluster subsetting.
+
+## [29.16.2] - 2021-03-22
+- Fix an issue where in collection response, we did not fill in the default values in the metadata and paging metadata.
+
+## [29.16.1] - 2021-03-17
+- Add fluent client api for simple resource and association resource.
+- Add support for generating projection mask as the mask data map.
+- Fix UnmodifiableList wrap in d2 relative load balancer.
+
+## [29.16.0] - 2021-03-10
+- Add a ParSeq based CompletionStage implementation
+- Bump minor version for internal services to pick up config change
+
+## [29.15.9] - 2021-03-06
+- Add separate configuration control for retrying RestRequest and StreamRequest.
+
+## [29.15.8] - 2021-03-05
+- Exclude 3XX http status from adding error logs during build error response from restli server.
+
+## [29.15.7] - 2021-03-05
+- Include accept header params when setting the response content type.
+
+## [29.15.6] - 2021-03-04
+- Fix bug that if a schema is an enum without any symbols, doc gen should handle it instead of throwing exception.
+
+## [29.15.5] - 2021-03-03
+- Fix content type header not set in case of `RestliResponseException` from non-streaming server.
+
+## [29.15.4] - 2021-03-02
+- Fix content type header not set in case of `StreamException` from Rest.li server.
+
+## [29.15.3] - 2021-02-24
+- Add support for update, partial_update, delete and get_all methods in fluent API bindings.
+- Prevent `RetriableRequestException` from cascading to the indirect caller.
+
+## [29.15.2] - 2021-02-19
+- Add `UnionTemplate.memberKeyName()` to directly return the key name for a union member.
+
+## [29.15.1] - 2021-02-18
+- Cleanup compression code to reduce duplication and minimize memcopies 
+
+## [29.15.0] - 2021-02-17
+- Always enable client compression filter so that responses can be decompressed. If the request already has an accept encoding header set do not overwrite it.
+
+## [29.14.5] - 2021-02-11
+- Shortcircuit already serialized projection params
+
+## [29.14.4] - 2021-02-10
+- Deal with status code 204, when we see 204 in error path, we will not return data (from data layer only)
+
+## [29.14.3] - 2021-02-10
+- Add PathSpecSet, an immutable set of PathSpecs that is convenient to use when building logic based on Rest.li projection
+
+## [29.14.2] - 2021-02-03
+- Exclude conflicting velocity engine dependency.
+
+## [29.14.1] - 2021-01-31
+- Gracefully degrade symbol tables when server node URI is null
+
+## [29.14.0] - 2021-01-29
+- Generate fluent client APIs get and create methods of collection resources.
+- Encode JSON values in PDLs deterministically:
+  - Annotation maps are now sorted alphabetically (to arbitrary depth).
+  - Default values of fields with record type are sorted by the field order of the record schema.
+
+## [29.13.12] - 2021-01-29
+Fix a bug of losing HTTP status code when a retriable response goes through ClientRetryFilter
+
+## [29.13.11] - 2021-01-27
+- Update 'CreateOnly' and 'ReadOnly' javadocs to be more accurate that the validation is performed by 'RestLiValidationFilter'.
+- Fix memory leak in `CheckedMap` when one map is used to create multiple record templates.
+  - Change listener list now clears finalized weak references when it detects any change listener was finalized or when listeners are notified.
 
 ## [29.13.10] - 2021-01-20
 - Fix bug which prevented using the `@PathKeyParam` resource method parameter annotation for a non-parent path key (i.e. path key defined in the same resource).
@@ -4817,7 +5001,57 @@ patch operations can re-use these classes for generating patch messages.
 
 ## [0.14.1]
 
-[Unreleased]: https://github.com/linkedin/rest.li/compare/v29.13.10...master
+[Unreleased]: https://github.com/linkedin/rest.li/compare/v29.19.8...master
+[29.19.8]: https://github.com/linkedin/rest.li/compare/v29.19.7...v29.19.8
+[29.19.7]: https://github.com/linkedin/rest.li/compare/v29.19.6...v29.19.7
+[29.19.6]: https://github.com/linkedin/rest.li/compare/v29.19.5...v29.19.6
+[29.19.5]: https://github.com/linkedin/rest.li/compare/v29.19.4...v29.19.5
+[29.19.4]: https://github.com/linkedin/rest.li/compare/v29.19.3...v29.19.4
+[29.19.3]: https://github.com/linkedin/rest.li/compare/v29.19.2...v29.19.3
+[29.19.2]: https://github.com/linkedin/rest.li/compare/v29.19.1...v29.19.2
+[29.19.1]: https://github.com/linkedin/rest.li/compare/v29.18.15...v29.19.1
+[29.18.15]: https://github.com/linkedin/rest.li/compare/v29.18.14...v29.18.15
+[29.18.14]: https://github.com/linkedin/rest.li/compare/v29.18.13...v29.18.14
+[29.18.13]: https://github.com/linkedin/rest.li/compare/v29.18.12...v29.18.13
+[29.18.12]: https://github.com/linkedin/rest.li/compare/v29.18.11...v29.18.12
+[29.18.11]: https://github.com/linkedin/rest.li/compare/v29.18.10...v29.18.11
+[29.18.10]: https://github.com/linkedin/rest.li/compare/v29.18.9...v29.18.10
+[29.18.9]: https://github.com/linkedin/rest.li/compare/v29.18.8...v29.18.9
+[29.18.8]: https://github.com/linkedin/rest.li/compare/v29.18.7...v29.18.8
+[29.18.7]: https://github.com/linkedin/rest.li/compare/v29.18.6...v29.18.7
+[29.18.6]: https://github.com/linkedin/rest.li/compare/v29.18.5...v29.18.6
+[29.18.5]: https://github.com/linkedin/rest.li/compare/v29.18.4...v29.18.5
+[29.18.4]: https://github.com/linkedin/rest.li/compare/v29.18.3...v29.18.4
+[29.18.3]: https://github.com/linkedin/rest.li/compare/v29.18.2...v29.18.3
+[29.18.2]: https://github.com/linkedin/rest.li/compare/v29.18.1...v29.18.2
+[29.18.1]: https://github.com/linkedin/rest.li/compare/v29.18.0...v29.18.1
+[29.18.0]: https://github.com/linkedin/rest.li/compare/v29.17.4...v29.18.0
+[29.17.4]: https://github.com/linkedin/rest.li/compare/v29.17.3...v29.17.4
+[29.17.3]: https://github.com/linkedin/rest.li/compare/v29.17.2...v29.17.3
+[29.17.2]: https://github.com/linkedin/rest.li/compare/v29.17.1...v29.17.2
+[29.17.1]: https://github.com/linkedin/rest.li/compare/v29.17.0...v29.17.1
+[29.17.0]: https://github.com/linkedin/rest.li/compare/v29.16.2...v29.17.0
+[29.16.2]: https://github.com/linkedin/rest.li/compare/v29.16.1...v29.16.2
+[29.16.1]: https://github.com/linkedin/rest.li/compare/v29.16.0...v29.16.1
+[29.16.0]: https://github.com/linkedin/rest.li/compare/v29.15.9...v29.16.0
+[29.15.9]: https://github.com/linkedin/rest.li/compare/v29.15.8...v29.15.9
+[29.15.8]: https://github.com/linkedin/rest.li/compare/v29.15.7...v29.15.8
+[29.15.7]: https://github.com/linkedin/rest.li/compare/v29.15.6...v29.15.7
+[29.15.6]: https://github.com/linkedin/rest.li/compare/v29.15.5...v29.15.6
+[29.15.5]: https://github.com/linkedin/rest.li/compare/v29.15.4...v29.15.5
+[29.15.4]: https://github.com/linkedin/rest.li/compare/v29.15.3...v29.15.4
+[29.15.3]: https://github.com/linkedin/rest.li/compare/v29.15.2...v29.15.3
+[29.15.2]: https://github.com/linkedin/rest.li/compare/v29.15.1...v29.15.2
+[29.15.1]: https://github.com/linkedin/rest.li/compare/v29.15.0...v29.15.1
+[29.15.0]: https://github.com/linkedin/rest.li/compare/v29.14.5...v29.15.0
+[29.14.5]: https://github.com/linkedin/rest.li/compare/v29.14.4...v29.14.5
+[29.14.4]: https://github.com/linkedin/rest.li/compare/v29.14.3...v29.14.4
+[29.14.3]: https://github.com/linkedin/rest.li/compare/v29.14.2...v29.14.3
+[29.14.2]: https://github.com/linkedin/rest.li/compare/v29.14.1...v29.14.2
+[29.14.1]: https://github.com/linkedin/rest.li/compare/v29.14.0...v29.14.1
+[29.14.0]: https://github.com/linkedin/rest.li/compare/v29.13.12...v29.14.0
+[29.13.12]: https://github.com/linkedin/rest.li/compare/v29.13.11...v29.13.12
+[29.13.11]: https://github.com/linkedin/rest.li/compare/v29.13.10...v29.13.11
 [29.13.10]: https://github.com/linkedin/rest.li/compare/v29.13.9...v29.13.10
 [29.13.9]: https://github.com/linkedin/rest.li/compare/v29.13.8...v29.13.9
 [29.13.8]: https://github.com/linkedin/rest.li/compare/v29.13.7...v29.13.8

@@ -41,7 +41,9 @@ import com.linkedin.r2.message.stream.entitystream.EntityStreams;
 import com.linkedin.r2.transport.http.client.HttpClientFactory;
 import com.linkedin.r2.util.NamedThreadFactory;
 import com.linkedin.test.util.ClockedExecutor;
+import com.linkedin.test.util.retry.SingleRetry;
 import com.linkedin.util.clock.SettableClock;
+import com.linkedin.util.clock.SystemClock;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -91,10 +93,18 @@ public class RetryClientTest
         HttpClientFactory.UNLIMITED_CLIENT_REQUEST_RETRY_RATIO);
 
     DynamicClient dynamicClient = new DynamicClient(balancer, null);
-    RetryClient client = new RetryClient(dynamicClient, balancer, 3);
+    RetryClient client = new RetryClient(
+        dynamicClient,
+        balancer,
+        D2ClientConfig.DEFAULT_RETRY_LIMIT,
+        RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
+        RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
+        SystemClock.instance(),
+        true,
+        false);
     URI uri = URI.create("d2://retryService?arg1arg2");
     RestRequest restRequest = new RestRequestBuilder(uri).setEntity(CONTENT).build();
-    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<RestResponse>();
+    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<>();
     client.restRequest(restRequest, restCallback);
 
     assertNull(restCallback.e);
@@ -108,14 +118,48 @@ public class RetryClientTest
         HttpClientFactory.UNLIMITED_CLIENT_REQUEST_RETRY_RATIO);
 
     DynamicClient dynamicClient = new DynamicClient(balancer, null);
-    RetryClient client = new RetryClient(dynamicClient, balancer, 3);
+    RetryClient client = new RetryClient(
+        dynamicClient,
+        balancer,
+        D2ClientConfig.DEFAULT_RETRY_LIMIT,
+        RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
+        RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
+        SystemClock.instance(),
+        true,
+        true);
     URI uri = URI.create("d2://retryService?arg1arg2");
     StreamRequest streamRequest = new StreamRequestBuilder(uri).build(EntityStreams.newEntityStream(new ByteStringWriter(CONTENT)));
-    TrackerClientTest.TestCallback<StreamResponse> restCallback = new TrackerClientTest.TestCallback<StreamResponse>();
+    TrackerClientTest.TestCallback<StreamResponse> restCallback = new TrackerClientTest.TestCallback<>();
     client.streamRequest(streamRequest, restCallback);
 
     assertNull(restCallback.e);
     assertNotNull(restCallback.t);
+  }
+
+  @Test
+  public void testIgnoreStreamRetry() throws Exception
+  {
+    SimpleLoadBalancer balancer = prepareLoadBalancer(Arrays.asList("http://test.linkedin.com/retry1", "http://test.linkedin.com/good"),
+        HttpClientFactory.UNLIMITED_CLIENT_REQUEST_RETRY_RATIO);
+
+    DynamicClient dynamicClient = new DynamicClient(balancer, null);
+    RetryClient client = new RetryClient(
+        dynamicClient,
+        balancer,
+        D2ClientConfig.DEFAULT_RETRY_LIMIT,
+        RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
+        RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
+        SystemClock.instance(),
+        true,
+        false);
+    URI uri = URI.create("d2://retryService?arg1arg2");
+    StreamRequest streamRequest = new StreamRequestBuilder(uri).build(EntityStreams.newEntityStream(new ByteStringWriter(CONTENT)));
+    TrackerClientTest.TestCallback<StreamResponse> restCallback = new TrackerClientTest.TestCallback<>();
+    client.streamRequest(streamRequest, restCallback);
+
+    assertNull(restCallback.t);
+    assertNotNull(restCallback.e);
+    assertTrue(restCallback.e.getMessage().contains("Data not available"));
   }
 
   @Test
@@ -125,10 +169,18 @@ public class RetryClientTest
         HttpClientFactory.UNLIMITED_CLIENT_REQUEST_RETRY_RATIO);
 
     DynamicClient dynamicClient = new DynamicClient(balancer, null);
-    RetryClient client = new RetryClient(dynamicClient, balancer, 3);
+    RetryClient client = new RetryClient(
+        dynamicClient,
+        balancer,
+        D2ClientConfig.DEFAULT_RETRY_LIMIT,
+        RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
+        RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
+        SystemClock.instance(),
+        true,
+        false);
     URI uri = URI.create("d2://retryService?arg1=empty&arg2=empty");
     RestRequest restRequest = new RestRequestBuilder(uri).build();
-    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<RestResponse>();
+    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<>();
 
     RequestContext context = new RequestContext();
     KeyMapper.TargetHostHints.setRequestContextTargetHost(context, URI.create("http://test.linkedin.com/bad"));
@@ -146,10 +198,18 @@ public class RetryClientTest
         HttpClientFactory.UNLIMITED_CLIENT_REQUEST_RETRY_RATIO);
 
     DynamicClient dynamicClient = new DynamicClient(balancer, null);
-    RetryClient client = new RetryClient(dynamicClient, balancer, 3);
+    RetryClient client = new RetryClient(
+        dynamicClient,
+        balancer,
+        D2ClientConfig.DEFAULT_RETRY_LIMIT,
+        RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
+        RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
+        SystemClock.instance(),
+        true,
+        true);
     URI uri = URI.create("d2://retryService?arg1=empty&arg2=empty");
     StreamRequest streamRequest = new StreamRequestBuilder(uri).build(EntityStreams.emptyStream());
-    TrackerClientTest.TestCallback<StreamResponse> streamCallback = new TrackerClientTest.TestCallback<StreamResponse>();
+    TrackerClientTest.TestCallback<StreamResponse> streamCallback = new TrackerClientTest.TestCallback<>();
 
     RequestContext context = new RequestContext();
     KeyMapper.TargetHostHints.setRequestContextTargetHost(context, URI.create("http://test.linkedin.com/bad"));
@@ -167,10 +227,18 @@ public class RetryClientTest
         HttpClientFactory.UNLIMITED_CLIENT_REQUEST_RETRY_RATIO);
 
     DynamicClient dynamicClient = new DynamicClient(balancer, null);
-    RetryClient client = new RetryClient(dynamicClient, balancer, 1);
+    RetryClient client = new RetryClient(
+        dynamicClient,
+        balancer,
+        1,
+        RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
+        RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
+        SystemClock.instance(),
+        true,
+        false);
     URI uri = URI.create("d2://retryService?arg1=empty&arg2=empty");
     RestRequest restRequest = new RestRequestBuilder(uri).build();
-    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<RestResponse>();
+    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<>();
     client.restRequest(restRequest, restCallback);
 
     assertNull(restCallback.t);
@@ -185,10 +253,18 @@ public class RetryClientTest
         HttpClientFactory.UNLIMITED_CLIENT_REQUEST_RETRY_RATIO);
 
     DynamicClient dynamicClient = new DynamicClient(balancer, null);
-    RetryClient client = new RetryClient(dynamicClient, balancer, 1);
+    RetryClient client = new RetryClient(
+        dynamicClient,
+        balancer,
+        1,
+        RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
+        RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
+        SystemClock.instance(),
+        true,
+        true);
     URI uri = URI.create("d2://retryService?arg1=empty&arg2=empty");
     StreamRequest streamRequest = new StreamRequestBuilder(uri).build(EntityStreams.emptyStream());
-    TrackerClientTest.TestCallback<StreamResponse> streamCallback = new TrackerClientTest.TestCallback<StreamResponse>();
+    TrackerClientTest.TestCallback<StreamResponse> streamCallback = new TrackerClientTest.TestCallback<>();
     client.streamRequest(streamRequest, streamCallback);
 
     assertNull(streamCallback.t);
@@ -203,10 +279,18 @@ public class RetryClientTest
         HttpClientFactory.UNLIMITED_CLIENT_REQUEST_RETRY_RATIO);
 
     DynamicClient dynamicClient = new DynamicClient(balancer, null);
-    RetryClient client = new RetryClient(dynamicClient, balancer, 3);
+    RetryClient client = new RetryClient(
+        dynamicClient,
+        balancer,
+        D2ClientConfig.DEFAULT_RETRY_LIMIT,
+        RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
+        RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
+        SystemClock.instance(),
+        true,
+        false);
     URI uri = URI.create("d2://retryService?arg1=empty&arg2=empty");
     RestRequest restRequest = new RestRequestBuilder(uri).build();
-    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<RestResponse>();
+    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<>();
     client.restRequest(restRequest, restCallback);
 
     assertNull(restCallback.t);
@@ -221,7 +305,15 @@ public class RetryClientTest
         HttpClientFactory.UNLIMITED_CLIENT_REQUEST_RETRY_RATIO);
 
     DynamicClient dynamicClient = new DynamicClient(balancer, null);
-    RetryClient client = new RetryClient(dynamicClient, balancer, 3);
+    RetryClient client = new RetryClient(
+        dynamicClient,
+        balancer,
+        D2ClientConfig.DEFAULT_RETRY_LIMIT,
+        RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
+        RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
+        SystemClock.instance(),
+        true,
+        true);
     URI uri = URI.create("d2://retryService?arg1=empty&arg2=empty");
     StreamRequest streamRequest = new StreamRequestBuilder(uri).build(EntityStreams.emptyStream());
     FutureCallback<StreamResponse> streamCallback = new FutureCallback<>();
@@ -237,7 +329,7 @@ public class RetryClientTest
     }
   }
 
-  @Test
+  @Test(retryAnalyzer = SingleRetry.class) // Known to be flaky in CI
   public void testRestRetryExceedsClientRetryRatio() throws Exception
   {
     SimpleLoadBalancer balancer = prepareLoadBalancer(Arrays.asList("http://test.linkedin.com/retry1", "http://test.linkedin.com/good"),
@@ -247,10 +339,12 @@ public class RetryClientTest
     RetryClient client = new RetryClient(
         dynamicClient,
         balancer,
-        D2ClientConfig.DEAULT_RETRY_LIMIT,
+        D2ClientConfig.DEFAULT_RETRY_LIMIT,
         RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
         RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
-        clock);
+        clock,
+        true,
+        false);
     URI uri1 = URI.create("d2://retryService1?arg1=empty&arg2=empty");
     RestRequest restRequest1 = new RestRequestBuilder(uri1).build();
 
@@ -258,7 +352,7 @@ public class RetryClientTest
     RestRequest restRequest2 = new RestRequestBuilder(uri2).build();
 
     // This request will be retried and route to the good host
-    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<RestResponse>();
+    TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<>();
     client.restRequest(restRequest1, restCallback);
 
     assertNull(restCallback.e);
@@ -267,7 +361,7 @@ public class RetryClientTest
     // This request will not be retried because the retry ratio is exceeded
     clock.addDuration(RetryClient.DEFAULT_UPDATE_INTERVAL_MS);
 
-    restCallback = new TrackerClientTest.TestCallback<RestResponse>();
+    restCallback = new TrackerClientTest.TestCallback<>();
     client.restRequest(restRequest1, restCallback);
 
     assertNull(restCallback.t);
@@ -275,7 +369,7 @@ public class RetryClientTest
     assertTrue(restCallback.e.getMessage().contains("Data not available"));
 
     // If the client sends request to a different service endpoint, the retry ratio should not interfere
-    restCallback = new TrackerClientTest.TestCallback<RestResponse>();
+    restCallback = new TrackerClientTest.TestCallback<>();
     client.restRequest(restRequest2, restCallback);
 
     assertNull(restCallback.e);
@@ -284,7 +378,7 @@ public class RetryClientTest
     // After 5s interval, retry counter is reset and this request will be retried again
     clock.addDuration(RetryClient.DEFAULT_UPDATE_INTERVAL_MS * RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM);
 
-    restCallback = new TrackerClientTest.TestCallback<RestResponse>();
+    restCallback = new TrackerClientTest.TestCallback<>();
     client.restRequest(restRequest1, restCallback);
 
     assertNull(restCallback.e);
@@ -301,16 +395,18 @@ public class RetryClientTest
     RetryClient client = new RetryClient(
         dynamicClient,
         balancer,
-        D2ClientConfig.DEAULT_RETRY_LIMIT,
+        D2ClientConfig.DEFAULT_RETRY_LIMIT,
         RetryClient.DEFAULT_UPDATE_INTERVAL_MS,
         RetryClient.DEFAULT_AGGREGATED_INTERVAL_NUM,
-        clock);
+        clock,
+        true,
+        false);
     URI uri = URI.create("d2://retryService?arg1=empty&arg2=empty");
     RestRequest restRequest = new RestRequestBuilder(uri).build();
 
     clock.scheduleWithFixedDelay(() ->
     {
-      TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<RestResponse>();
+      TrackerClientTest.TestCallback<RestResponse> restCallback = new TrackerClientTest.TestCallback<>();
       client.restRequest(restRequest, restCallback);
 
       // This request will be retried and route to the good host
@@ -329,11 +425,11 @@ public class RetryClientTest
     String strategyName = "degrader";
 
     // setup partition
-    Map<URI,Map<Integer, PartitionData>> partitionDescriptions = new HashMap<URI, Map<Integer, PartitionData>>();
+    Map<URI,Map<Integer, PartitionData>> partitionDescriptions = new HashMap<>();
     for (String uri : uris)
     {
       final URI foo = URI.create(uri);
-      Map<Integer, PartitionData> foo1Data = new HashMap<Integer, PartitionData>();
+      Map<Integer, PartitionData> foo1Data = new HashMap<>();
       // ensure that we first route to the retry uris before the good uris
       double weight = uri.contains("good") ? 0.0001 : 1.0;
       foo1Data.put(0, new PartitionData(weight));
@@ -343,7 +439,7 @@ public class RetryClientTest
     DegraderLoadBalancerStrategyV3 strategy = new DegraderLoadBalancerStrategyV3(
         new DegraderLoadBalancerStrategyConfig(5000), serviceName,
         null, Collections.emptyList());
-    List<LoadBalancerState.SchemeStrategyPair> orderedStrategies = new ArrayList<LoadBalancerState.SchemeStrategyPair>();
+    List<LoadBalancerState.SchemeStrategyPair> orderedStrategies = new ArrayList<>();
     orderedStrategies.add(new LoadBalancerState.SchemeStrategyPair("http", strategy));
 
     PartitionAccessor accessor = new TestRetryPartitionAccessor();
